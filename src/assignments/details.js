@@ -46,6 +46,13 @@ let currentComments     = [];
 // TODO: Select each element by its id:
 //   assignmentTitle, assignmentDueDate, assignmentDescription,
 //   assignmentFilesList, commentList, commentForm, newCommentInput.
+const assignmentTitle = document.getElementById('assignment-title');
+const assignmentDueDate = document.getElementById('assignment-due-date');
+const assignmentDescription = document.getElementById('assignment-description');
+const assignmentFilesList = document.getElementById('assignment-files-list');
+const commentList = document.getElementById('comment-list');
+const commentForm = document.getElementById('comment-form');
+const newCommentInput = document.getElementById('new-comment');
 
 // --- Functions ---
 
@@ -59,7 +66,8 @@ let currentComments     = [];
  *    the integer primary key of the assignment).
  */
 function getAssignmentIdFromURL() {
-  // ... your implementation here ...
+  const params = new URLSearchParams(window.location.search);
+  return params.get('id');
 }
 
 /**
@@ -79,7 +87,20 @@ function getAssignmentIdFromURL() {
  *    (assignment.files is already a decoded string array from the API.)
  */
 function renderAssignmentDetails(assignment) {
-  // ... your implementation here ...
+  assignmentTitle.textContent = assignment.title;
+  assignmentDueDate.textContent = `Due: ${assignment.due_date}`;
+  assignmentDescription.textContent = assignment.description;
+  assignmentFilesList.innerHTML = '';
+
+  const files = Array.isArray(assignment.files) ? assignment.files : [];
+  files.forEach((url) => {
+    const item = document.createElement('li');
+    const link = document.createElement('a');
+    link.href = url;
+    link.textContent = url;
+    item.appendChild(link);
+    assignmentFilesList.appendChild(item);
+  });
 }
 
 /**
@@ -96,7 +117,16 @@ function renderAssignmentDetails(assignment) {
  *   </article>
  */
 function createCommentArticle(comment) {
-  // ... your implementation here ...
+  const article = document.createElement('article');
+
+  const text = document.createElement('p');
+  text.textContent = comment.text;
+
+  const footer = document.createElement('footer');
+  footer.textContent = `Posted by: ${comment.author}`;
+
+  article.append(text, footer);
+  return article;
 }
 
 /**
@@ -109,7 +139,10 @@ function createCommentArticle(comment) {
  *    append the result to commentList.
  */
 function renderComments() {
-  // ... your implementation here ...
+  commentList.innerHTML = '';
+  currentComments.forEach((comment) => {
+    commentList.appendChild(createCommentArticle(comment));
+  });
 }
 
 /**
@@ -134,7 +167,29 @@ function renderComments() {
  *    - Clear newCommentInput.
  */
 async function handleAddComment(event) {
-  // ... your implementation here ...
+  event.preventDefault();
+
+  const commentText = newCommentInput.value.trim();
+  if (commentText === '') {
+    return;
+  }
+
+  const response = await fetch('./api/index.php?action=comment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      assignment_id: currentAssignmentId,
+      author: 'Student',
+      text: commentText,
+    }),
+  });
+  const result = await response.json();
+
+  if (result.success) {
+    currentComments.push(result.data);
+    renderComments();
+    newCommentInput.value = '';
+  }
 }
 
 /**
@@ -163,7 +218,29 @@ async function handleAddComment(event) {
  *    - Set assignmentTitle.textContent = "Assignment not found."
  */
 async function initializePage() {
-  // ... your implementation here ...
+  currentAssignmentId = getAssignmentIdFromURL();
+
+  if (!currentAssignmentId) {
+    assignmentTitle.textContent = 'Assignment not found.';
+    return;
+  }
+
+  const [assignmentResponse, commentsResponse] = await Promise.all([
+    fetch(`./api/index.php?id=${currentAssignmentId}`),
+    fetch(`./api/index.php?action=comments&assignment_id=${currentAssignmentId}`),
+  ]);
+
+  const assignmentResult = await assignmentResponse.json();
+  const commentsResult = await commentsResponse.json();
+  currentComments = Array.isArray(commentsResult.data) ? commentsResult.data : [];
+
+  if (assignmentResult.success && assignmentResult.data && !Array.isArray(assignmentResult.data)) {
+    renderAssignmentDetails(assignmentResult.data);
+    renderComments();
+    commentForm.addEventListener('submit', handleAddComment);
+  } else {
+    assignmentTitle.textContent = 'Assignment not found.';
+  }
 }
 
 // --- Initial Page Load ---

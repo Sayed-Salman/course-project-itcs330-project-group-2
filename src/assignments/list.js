@@ -25,6 +25,7 @@
 // --- Element Selections ---
 // TODO: Select the section for the assignment list using its
 //       id 'assignment-list-section'.
+const assignmentListSection = document.getElementById('assignment-list-section');
 
 // --- Functions ---
 
@@ -54,7 +55,23 @@
  * the assignments table) so that details.js can read the id from the URL.
  */
 function createAssignmentArticle(assignment) {
-  // ... your implementation here ...
+  const article = document.createElement('article');
+
+  const title = document.createElement('h2');
+  title.textContent = assignment.title;
+
+  const dueDate = document.createElement('p');
+  dueDate.textContent = `Due: ${assignment.due_date}`;
+
+  const description = document.createElement('p');
+  description.textContent = assignment.description;
+
+  const link = document.createElement('a');
+  link.href = `details.html?id=${assignment.id}`;
+  link.textContent = 'View Details & Discussion';
+
+  article.append(title, dueDate, description, link);
+  return article;
 }
 
 /**
@@ -71,7 +88,15 @@ function createAssignmentArticle(assignment) {
  *    - Append the returned <article> to the list section.
  */
 async function loadAssignments() {
-  // ... your implementation here ...
+  const response = await fetch('./api/index.php');
+  const result = await response.json();
+
+  assignmentListSection.innerHTML = '';
+
+  const data = result.success && Array.isArray(result.data) ? result.data : [];
+  data.forEach((assignment) => {
+    assignmentListSection.appendChild(createAssignmentArticle(assignment));
+  });
 }
 
 // --- Initial Page Load ---
